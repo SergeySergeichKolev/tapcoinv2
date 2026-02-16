@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>TapCoin</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap");
+
+      * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+      :root {
+        --bg-primary: #0a0a0f;
+        --bg-secondary: #12121a;
+        --bg-card: #1a1a2e;
+        --gold: #f5c542;
+        --gold-bright: #ffe066;
+        --gold-dark: #c49a1a;
+        --text-primary: #ffffff;
+        --text-secondary: #8888aa;
+        --accent: #7b61ff;
+        --green: #4ade80;
+        --red: #ef4444;
+      }
+
+      body {
+        font-family: "Outfit", sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .bg-glow {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 300px; height: 300px;
+        background: radial-gradient(circle, rgba(245, 197, 66, 0.08) 0%, transparent 70%);
+        border-radius: 50%; pointer-events: none; z-index: 0;
+      }
+
+      /* ===== HEADER ===== */
+      .header {
+        position: relative; z-index: 10; width: 100%; padding: 16px 20px;
+        display: flex; justify-content: space-between; align-items: center;
+      }
+      .user-info { display: flex; align-items: center; gap: 10px; }
+      .user-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--gold));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 14px;
+      }
+      .user-name { font-weight: 600; font-size: 15px; }
+      .user-rank { font-size: 12px; color: var(--text-secondary); }
+      .league-badge {
+        background: var(--bg-secondary); border: 1px solid rgba(245, 197, 66, 0.2);
+        border-radius: 20px; padding: 6px 14px; font-size: 13px;
+        color: var(--gold); font-weight: 600;
+      }
+
+      /* ===== MAIN CONTENT (tab pages) ===== */
+      .tab-page { display: none; flex-direction: column; align-items: center; flex: 1; width: 100%; overflow: hidden; }
+      .tab-page.active { display: flex; }
+
+      /* ===== TAP PAGE ===== */
+      .score-section { position: relative; z-index: 10; text-align: center; margin-top: 10px; }
+      .score-label { font-size: 13px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+      .score-value {
+        font-size: 48px; font-weight: 900;
+        background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold-dark) 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        line-height: 1.1;
+      }
+
+      .stats-row { display: flex; gap: 8px; padding: 0 20px; margin-top: 8px; width: 100%; }
+      .stat-card {
+        flex: 1; background: var(--bg-secondary); border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px; padding: 10px; text-align: center;
+      }
+      .stat-card .stat-val { font-size: 18px; font-weight: 700; color: var(--gold); }
+      .stat-card .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+      .coin-container {
+        position: relative; z-index: 10; flex: 1; display: flex;
+        align-items: center; justify-content: center; width: 100%;
+      }
+      .coin { width: 260px; height: 260px; border-radius: 50%; position: relative; cursor: pointer; transition: transform 0.08s ease; will-change: transform; }
+      .coin:active { transform: scale(0.95); }
+      .coin-outer {
+        width: 100%; height: 100%; border-radius: 50%;
+        background: conic-gradient(from 0deg, #c49a1a, #f5c542, #ffe066, #f5c542, #c49a1a, #a07c15, #c49a1a, #f5c542, #ffe066, #f5c542, #c49a1a);
+        padding: 6px;
+        box-shadow: 0 0 40px rgba(245,197,66,0.3), 0 8px 32px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,224,102,0.4);
+        animation: coin-glow 3s ease-in-out infinite;
+      }
+      @keyframes coin-glow {
+        0%, 100% { box-shadow: 0 0 40px rgba(245,197,66,0.3), 0 8px 32px rgba(0,0,0,0.5); }
+        50% { box-shadow: 0 0 60px rgba(245,197,66,0.5), 0 8px 32px rgba(0,0,0,0.5); }
+      }
+      .coin-inner {
+        width: 100%; height: 100%; border-radius: 50%;
+        background: radial-gradient(ellipse at 35% 35%, #ffe066 0%, #f5c542 25%, #c49a1a 60%, #a07c15 100%);
+        display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
+      }
+      .coin-inner::before {
+        content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+        background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.15) 55%, transparent 60%);
+        animation: coin-shine 4s ease-in-out infinite;
+      }
+      @keyframes coin-shine {
+        0%, 100% { transform: translate(-30%, -30%) rotate(0deg); }
+        50% { transform: translate(30%, 30%) rotate(0deg); }
+      }
+      .coin-symbol { font-size: 80px; font-weight: 900; color: #8b6914; text-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 -1px 0 rgba(255,224,102,0.6); z-index: 1; position: relative; }
+
+      .tap-feedback {
+        position: absolute; font-size: 28px; font-weight: 900; color: var(--gold-bright);
+        pointer-events: none; z-index: 100; animation: float-up 0.8s ease-out forwards;
+        text-shadow: 0 2px 8px rgba(245,197,66,0.5);
+      }
+      @keyframes float-up {
+        0% { opacity: 1; transform: translateY(0) scale(1); }
+        100% { opacity: 0; transform: translateY(-80px) scale(1.3); }
+      }
+      .particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); pointer-events: none; z-index: 99; }
+
+      .energy-section { position: relative; z-index: 10; width: 100%; padding: 0 30px 12px; }
+      .energy-bar-container { width: 100%; height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+      .energy-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); border-radius: 4px; transition: width 0.3s ease; }
+      .energy-info { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); }
+      .energy-info .energy-value { color: var(--gold); font-weight: 700; }
+
+      /* ===== BOOST PAGE ===== */
+      .boost-page { padding: 0 16px; overflow-y: auto; flex: 1; width: 100%; padding-bottom: 10px; }
+      .boost-page-header { text-align: center; padding: 16px 0 12px; }
+      .boost-page-header h2 { font-size: 22px; font-weight: 700; }
+      .boost-page-header p { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+      .boost-card {
+        background: var(--bg-secondary); border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px; padding: 16px; margin-bottom: 10px;
+        display: flex; align-items: center; gap: 14px;
+        transition: border-color 0.2s;
+      }
+      .boost-card:active { border-color: var(--gold); }
+      .boost-card.maxed { opacity: 0.5; }
+      .boost-icon { font-size: 32px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border-radius: 12px; flex-shrink: 0; }
+      .boost-info { flex: 1; }
+      .boost-name { font-weight: 700; font-size: 15px; }
+      .boost-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+      .boost-level { font-size: 11px; color: var(--accent); margin-top: 4px; font-weight: 600; }
+      .boost-buy {
+        background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+        border: none; border-radius: 12px; padding: 10px 16px;
+        font-family: inherit; font-weight: 700; font-size: 13px;
+        color: #1a1a2e; cursor: pointer; white-space: nowrap;
+        transition: opacity 0.2s;
+      }
+      .boost-buy:disabled { opacity: 0.4; cursor: default; }
+      .boost-buy .cost-text { display: block; font-size: 11px; font-weight: 600; opacity: 0.8; }
+
+      /* ===== QUESTS PAGE ===== */
+      .quests-page { padding: 0 16px; overflow-y: auto; flex: 1; width: 100%; padding-bottom: 10px; }
+      .quests-page-header { text-align: center; padding: 16px 0 12px; }
+      .quests-page-header h2 { font-size: 22px; font-weight: 700; }
+      .quests-page-header p { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+      .quest-card {
+        background: var(--bg-secondary); border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;
+        display: flex; align-items: center; gap: 12px;
+      }
+      .quest-card.completed { border-color: rgba(74,222,128,0.3); }
+      .quest-card.claimed { opacity: 0.45; }
+      .quest-icon { font-size: 28px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border-radius: 12px; flex-shrink: 0; }
+      .quest-info { flex: 1; }
+      .quest-name { font-weight: 700; font-size: 14px; }
+      .quest-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+      .quest-progress-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+      .quest-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+      .quest-progress-text { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+      .quest-reward { text-align: center; flex-shrink: 0; }
+      .quest-reward-value { font-size: 14px; font-weight: 700; color: var(--gold); }
+      .quest-reward-label { font-size: 10px; color: var(--text-secondary); }
+      .quest-claim-btn {
+        background: var(--green); border: none; border-radius: 10px; padding: 8px 14px;
+        font-family: inherit; font-weight: 700; font-size: 12px;
+        color: #0a0a0f; cursor: pointer; white-space: nowrap;
+      }
+      .quest-claim-btn:disabled { background: var(--text-secondary); cursor: default; }
+      .quest-claimed-badge { font-size: 11px; color: var(--green); font-weight: 600; }
+
+      /* ===== LEADERBOARD OVERLAY ===== */
+      .overlay {
+        position: fixed; inset: 0; background: var(--bg-primary); z-index: 200;
+        display: none; flex-direction: column; animation: slideUp 0.3s ease;
+      }
+      .overlay.show { display: flex; }
+      @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+      .overlay-title { font-size: 20px; font-weight: 700; }
+      .close-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .leaderboard-list { flex: 1; overflow-y: auto; padding: 10px 20px; }
+      .lb-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; margin-bottom: 6px; background: var(--bg-secondary); }
+      .lb-item.me { border: 1px solid rgba(245,197,66,0.3); }
+      .lb-rank { width: 28px; font-weight: 700; font-size: 16px; color: var(--text-secondary); text-align: center; }
+      .lb-rank.top { color: var(--gold); }
+      .lb-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--gold)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+      .lb-info { flex: 1; }
+      .lb-name { font-weight: 600; font-size: 14px; }
+      .lb-score { font-size: 13px; color: var(--gold); font-weight: 600; }
+
+      /* ===== BOTTOM NAV ===== */
+      .bottom-nav {
+        position: relative; z-index: 10; width: 100%;
+        display: flex; justify-content: space-around; padding: 10px 10px;
+        background: var(--bg-secondary); border-top: 1px solid rgba(255,255,255,0.05);
+        flex-shrink: 0;
+      }
+      .nav-item {
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
+        font-size: 11px; color: var(--text-secondary); cursor: pointer;
+        transition: color 0.2s; padding: 4px 10px;
+      }
+      .nav-item.active { color: var(--gold); }
+      .nav-item svg { width: 22px; height: 22px; }
+
+      /* ===== TOAST ===== */
+      .toast {
+        position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+        background: var(--bg-card); border: 1px solid var(--gold);
+        color: var(--gold); padding: 10px 20px; border-radius: 12px;
+        font-size: 14px; font-weight: 600; z-index: 999;
+        animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+        pointer-events: none;
+      }
+      @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+      @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+
+      /* ===== SHAKE ===== */
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-glow"></div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div>
+          <div class="user-name" id="userName">Player</div>
+          <div class="user-rank">Rank #<span id="userRank">—</span></div>
+        </div>
+      </div>
+      <div class="league-badge" id="leagueBadge">⚡ Bronze</div>
+    </div>
+
+    <!-- ===== TAP PAGE ===== -->
+    <div class="tab-page active" id="page-tap">
+      <div class="score-section">
+        <div class="score-label">Your Coins</div>
+        <div class="score-value" id="scoreDisplay">0</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val" id="tapPower">+1</div>
+          <div class="stat-label">per tap</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="totalTaps">0</div>
+          <div class="stat-label">total taps</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="leagueLevel">1</div>
+          <div class="stat-label">level</div>
+        </div>
+      </div>
+      <div class="coin-container" id="coinContainer">
+        <div class="coin" id="coin">
+          <div class="coin-outer">
+            <div class="coin-inner">
+              <span class="coin-symbol">$</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="energy-section">
+        <div class="energy-bar-container">
+          <div class="energy-bar-fill" id="energyBar" style="width: 100%"></div>
+        </div>
+        <div class="energy-info">
+          <span>⚡ Energy</span>
+          <span><span class="energy-value" id="energyValue">1000</span> / <span id="energyMax">1000</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BOOST PAGE ===== -->
+    <div class="tab-page" id="page-boost">
+      <div class="boost-page">
+        <div class="boost-page-header">
+          <h2>⚡ Boost</h2>
+          <p>Улучшай способности, чтобы зарабатывать больше</p>
+        </div>
+        <div id="boostList"></div>
+      </div>
+    </div>
+
+    <!-- ===== QUESTS PAGE ===== -->
+    <div class="tab-page" id="page-quests">
+      <div class="quests-page">
+        <div class="quests-page-header">
+          <h2>🎯 Квесты</h2>
+          <p>Выполняй задания и получай бонусы</p>
+        </div>
+        <div id="questList"></div>
+      </div>
+    </div>
+
+    <!-- ===== FRIENDS PAGE ===== -->
+    <div class="tab-page" id="page-friends">
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 40px; text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;">👥</div>
+        <h2 style="font-size:20px; margin-bottom:8px;">Друзья</h2>
+        <p style="color:var(--text-secondary); font-size:14px;">Приглашай друзей и зарабатывай бонусы вместе! Скоро...</p>
+      </div>
+    </div>
+
+    <!-- Leaderboard Overlay -->
+    <div class="overlay" id="leaderboardOverlay">
+      <div class="overlay-header">
+        <div class="overlay-title">🏆 Leaderboard</div>
+        <button class="close-btn" onclick="closeOverlay()">&times;</button>
+      </div>
+      <div class="leaderboard-list" id="leaderboardList"></div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+      <div class="nav-item active" data-tab="tap" onclick="showTab('tap', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M6 12h12"/></svg>
+        Tap
+      </div>
+      <div class="nav-item" data-tab="boost" onclick="showTab('boost', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Boost
+      </div>
+      <div class="nav-item" data-tab="quests" onclick="showTab('quests', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Квесты
+      </div>
+      <div class="nav-item" data-tab="leaderboard" onclick="showTab('leaderboard', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15l-4 5H4l3-7h2l3 2zM12 15l4 5h4l-3-7h-2l-3 2z"/><circle cx="12" cy="7" r="4"/></svg>
+        Top
+      </div>
+      <div class="nav-item" data-tab="friends" onclick="showTab('friends', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Friends
+      </div>
+    </div>
+
+    <script>
+      // ===== CONFIG =====
+      const API_URL = window.location.origin + "/api";
+
+      // ===== STATE =====
+      let state = {
+        coins: 0,
+        energy: 1000,
+        maxEnergy: 1000,
+        energyRegen: 3,
+        totalTaps: 0,
+        level: 1,
+        tapPower: 1,
+        userId: null,
+        userName: "Player",
+        pendingCoins: 0,
+        pendingTaps: 0,
+      };
+
+      let syncInterval = null;
+      let currentTab = 'tap';
+
+      // ===== TELEGRAM INIT =====
+      const tg = window.Telegram?.WebApp;
+
+      function initTelegram() {
+        if (tg) {
+          tg.ready();
+          tg.expand();
+          tg.setHeaderColor("#0a0a0f");
+          tg.setBackgroundColor("#0a0a0f");
+          if (tg.initDataUnsafe?.user) {
+            const user = tg.initDataUnsafe.user;
+            state.userId = String(user.id);
+            state.userName = user.first_name || "Player";
+            document.getElementById("userName").textContent = state.userName;
+            document.getElementById("userAvatar").textContent = state.userName.charAt(0).toUpperCase();
+          }
+        }
+        if (!state.userId) {
+          state.userId = "test_" + Math.random().toString(36).substr(2, 9);
+          state.userName = "Test Player";
+          document.getElementById("userName").textContent = state.userName;
+          document.getElementById("userAvatar").textContent = "T";
+        }
+        loadState();
+        startEnergyRegen();
+        startSync();
+      }
+
+      // ===== LOAD / SAVE STATE =====
+      async function loadState() {
+        try {
+          const res = await fetch(`${API_URL}/user/${state.userId}`);
+          if (res.ok) {
+            const data = await res.json();
+            state.coins = data.coins || 0;
+            state.totalTaps = data.totalTaps || 0;
+            state.level = data.level || 1;
+            state.tapPower = data.tapPower || 1;
+            state.energy = data.energy || 1000;
+            state.maxEnergy = data.maxEnergy || 1000;
+            state.energyRegen = data.energyRegen || 3;
+            updateUI();
+          }
+        } catch (e) {
+          console.log("Offline mode");
+        }
+      }
+
+      async function syncToServer() {
+        if (state.pendingCoins === 0) return;
+        const coinsToSync = state.pendingCoins;
+        const tapsToSync = state.pendingTaps;
+        state.pendingCoins = 0;
+        state.pendingTaps = 0;
+
+        try {
+          const res = await fetch(`${API_URL}/tap`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: state.userId,
+              userName: state.userName,
+              coins: coinsToSync,
+              taps: tapsToSync,
+              initData: tg?.initData || "",
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            state.coins = data.coins;
+            state.level = data.level;
+            state.totalTaps = data.totalTaps;
+            state.tapPower = data.tapPower;
+            state.maxEnergy = data.maxEnergy;
+            state.energyRegen = data.energyRegen;
+            // Server-side energy sync
+            if (data.energy !== undefined) {
+              state.energy = data.energy;
+            }
+            updateUI();
+          }
+        } catch (e) {
+          state.pendingCoins += coinsToSync;
+          state.pendingTaps += tapsToSync;
+        }
+      }
+
+      function startSync() {
+        syncInterval = setInterval(syncToServer, 2000);
+      }
+
+      // ===== TAP HANDLING =====
+      const coin = document.getElementById("coin");
+      coin.addEventListener("pointerdown", handleTap);
+      coin.addEventListener("contextmenu", (e) => e.preventDefault());
+
+      // Anti-cheat: track client-side taps per second
+      let tapTimestamps = [];
+
+      function handleTap(e) {
+        e.preventDefault();
+        if (state.energy < 1) {
+          coin.style.animation = "none";
+          coin.offsetHeight;
+          coin.style.animation = "shake 0.3s ease";
+          return;
+        }
+
+        // Client-side anti-cheat: limit to 15 taps/sec
+        const now = Date.now();
+        tapTimestamps.push(now);
+        tapTimestamps = tapTimestamps.filter(t => t > now - 1000);
+        if (tapTimestamps.length > 15) return;
+
+        if (tg?.HapticFeedback) {
+          tg.HapticFeedback.impactOccurred("light");
+        }
+
+        state.coins += state.tapPower;
+        state.energy = Math.max(0, state.energy - 1);
+        state.totalTaps++;
+        state.pendingCoins += state.tapPower;
+        state.pendingTaps++;
+
+        createTapFeedback(e.clientX, e.clientY);
+        createParticles(e.clientX, e.clientY);
+        updateUI();
+      }
+
+      function createTapFeedback(x, y) {
+        const el = document.createElement("div");
+        el.className = "tap-feedback";
+        el.textContent = `+${state.tapPower}`;
+        el.style.left = x - 20 + (Math.random() * 40 - 20) + "px";
+        el.style.top = y - 20 + "px";
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 800);
+      }
+
+      function createParticles(x, y) {
+        for (let i = 0; i < 6; i++) {
+          const p = document.createElement("div");
+          p.className = "particle";
+          p.style.left = x + "px";
+          p.style.top = y + "px";
+          const angle = (Math.PI * 2 * i) / 6 + Math.random() * 0.5;
+          const dist = 40 + Math.random() * 60;
+          const tx = Math.cos(angle) * dist;
+          const ty = Math.sin(angle) * dist;
+          p.animate(
+            [{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: `translate(${tx}px,${ty}px) scale(0)`, opacity: 0 }],
+            { duration: 500, easing: "ease-out" }
+          );
+          document.body.appendChild(p);
+          setTimeout(() => p.remove(), 500);
+        }
+      }
+
+      // ===== ENERGY REGEN =====
+      function startEnergyRegen() {
+        setInterval(() => {
+          if (state.energy < state.maxEnergy) {
+            state.energy = Math.min(state.energy + state.energyRegen, state.maxEnergy);
+            updateEnergyUI();
+          }
+        }, 1000);
+      }
+
+      // ===== UI UPDATES =====
+      function updateUI() {
+        document.getElementById("scoreDisplay").textContent = formatNumber(state.coins);
+        document.getElementById("totalTaps").textContent = formatNumber(state.totalTaps);
+        document.getElementById("tapPower").textContent = `+${state.tapPower}`;
+        document.getElementById("leagueLevel").textContent = state.level;
+        document.getElementById("energyMax").textContent = state.maxEnergy;
+        updateEnergyUI();
+        updateLeague();
+      }
+
+      function updateEnergyUI() {
+        const pct = (state.energy / state.maxEnergy) * 100;
+        document.getElementById("energyBar").style.width = pct + "%";
+        document.getElementById("energyValue").textContent = Math.floor(state.energy);
+      }
+
+      function updateLeague() {
+        const badge = document.getElementById("leagueBadge");
+        if (state.coins >= 1000000) badge.textContent = "👑 Legendary";
+        else if (state.coins >= 500000) badge.textContent = "🔮 Master";
+        else if (state.coins >= 100000) badge.textContent = "💎 Diamond";
+        else if (state.coins >= 50000) badge.textContent = "🥇 Gold";
+        else if (state.coins >= 10000) badge.textContent = "🥈 Silver";
+        else badge.textContent = "⚡ Bronze";
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function formatNumber(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+        if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+        return n.toString();
+      }
+
+      function showToast(text) {
+        const t = document.createElement("div");
+        t.className = "toast";
+        t.textContent = text;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 2000);
+      }
+
+      // ===== TABS / NAVIGATION =====
+      function showTab(tab, el) {
+        document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+        document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
+
+        if (el) el.classList.add("active");
+
+        if (tab === "leaderboard") {
+          document.getElementById("page-tap").classList.add("active");
+          loadLeaderboard();
+          return;
+        }
+
+        currentTab = tab;
+        const page = document.getElementById(`page-${tab}`);
+        if (page) page.classList.add("active");
+
+        if (tab === "boost") loadBoosts();
+        if (tab === "quests") loadQuests();
+      }
+
+      // ===== LEADERBOARD =====
+      async function loadLeaderboard() {
+        const overlay = document.getElementById("leaderboardOverlay");
+        overlay.classList.add("show");
+        try {
+          const res = await fetch(`${API_URL}/leaderboard`);
+          const data = await res.json();
+          renderLeaderboard(data);
+        } catch (e) {
+          renderLeaderboard([{ userName: state.userName, coins: state.coins, userId: state.userId }]);
+        }
+      }
+
+      function renderLeaderboard(players) {
+        const list = document.getElementById("leaderboardList");
+        list.innerHTML = players.map((p, i) => `
+          <div class="lb-item ${p.userId === state.userId ? 'me' : ''}">
+            <div class="lb-rank ${i < 3 ? 'top' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</div>
+            <div class="lb-avatar">${(p.userName || 'P').charAt(0)}</div>
+            <div class="lb-info">
+              <div class="lb-name">${escapeHtml(p.userName || 'Anonymous')}</div>
+              <div class="lb-score">${formatNumber(p.coins)} coins</div>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      function closeOverlay() {
+        document.getElementById("leaderboardOverlay").classList.remove("show");
+      }
+
+      // ===== BOOSTS =====
+      async function loadBoosts() {
+        try {
+          const res = await fetch(`${API_URL}/boosts/${state.userId}`);
+          const boosts = await res.json();
+          renderBoosts(boosts);
+        } catch (e) {
+          document.getElementById("boostList").innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:20px;">Не удалось загрузить бусты</p>';
+        }
+      }
+
+      function renderBoosts(boosts) {
+        const list = document.getElementById("boostList");
+        list.innerHTML = boosts.map(b => {
+          const isMaxed = b.currentLevel >= b.maxLevel;
+          const canAfford = state.coins >= b.cost;
+          return `
+            <div class="boost-card ${isMaxed ? 'maxed' : ''}">
+              <div class="boost-icon">${b.icon}</div>
+              <div class="boost-info">
+                <div class="boost-name">${b.name}</div>
+                <div class="boost-desc">${b.description}</div>
+                <div class="boost-level">Уровень ${b.currentLevel} / ${b.maxLevel}</div>
+              </div>
+              ${isMaxed ?
+                '<span style="color:var(--green);font-weight:700;font-size:13px;">MAX</span>' :
+                `<button class="boost-buy" ${!canAfford ? 'disabled' : ''} onclick="buyBoost('${b.boostId}')">
+                  Купить
+                  <span class="cost-text">🪙 ${formatNumber(b.cost)}</span>
+                </button>`
+              }
+            </div>
+          `;
+        }).join("");
+      }
+
+      async function buyBoost(boostId) {
+        try {
+          const res = await fetch(`${API_URL}/boosts/buy`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: state.userId, boostId, initData: tg?.initData || "" }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            state.coins = data.coins;
+            state.tapPower = data.tapPower;
+            state.maxEnergy = data.maxEnergy;
+            state.energyRegen = data.energyRegen;
+            updateUI();
+            loadBoosts();
+            showToast(`✅ Буст улучшен до уровня ${data.newLevel}!`);
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+          } else {
+            showToast(`❌ ${data.error || 'Ошибка покупки'}`);
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
+          }
+        } catch (e) {
+          showToast("❌ Ошибка сети");
+        }
+      }
+
+      // ===== QUESTS =====
+      async function loadQuests() {
+        try {
+          const res = await fetch(`${API_URL}/quests/${state.userId}`);
+          const quests = await res.json();
+          renderQuests(quests);
+        } catch (e) {
+          document.getElementById("questList").innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:20px;">Не удалось загрузить квесты</p>';
+        }
+      }
+
+      function renderQuests(quests) {
+        const list = document.getElementById("questList");
+        list.innerHTML = quests.map(q => {
+          const pct = Math.min((q.progress / q.target) * 100, 100);
+          const rewardText = [];
+          if (q.rewardCoins > 0) rewardText.push(`🪙 ${formatNumber(q.rewardCoins)}`);
+          if (q.rewardTapPower > 0) rewardText.push(`👆 +${q.rewardTapPower}`);
+
+          let actionHtml = '';
+          if (q.claimed) {
+            actionHtml = '<div class="quest-claimed-badge">✅ Получено</div>';
+          } else if (q.completed) {
+            actionHtml = `<button class="quest-claim-btn" onclick="claimQuest('${q.questId}')">Забрать</button>`;
+          } else {
+            actionHtml = `<div class="quest-reward"><div class="quest-reward-value">${rewardText.join('<br>')}</div></div>`;
+          }
+
+          return `
+            <div class="quest-card ${q.completed ? 'completed' : ''} ${q.claimed ? 'claimed' : ''}">
+              <div class="quest-icon">${q.icon}</div>
+              <div class="quest-info">
+                <div class="quest-name">${q.name}</div>
+                <div class="quest-desc">${q.description}</div>
+                <div class="quest-progress-bar"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
+                <div class="quest-progress-text">${formatNumber(q.progress)} / ${formatNumber(q.target)}</div>
+              </div>
+              ${actionHtml}
+            </div>
+          `;
+        }).join("");
+      }
+
+      async function claimQuest(questId) {
+        try {
+          const res = await fetch(`${API_URL}/quests/claim`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: state.userId, questId, initData: tg?.initData || "" }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            state.coins = data.coins;
+            state.tapPower = data.tapPower;
+            state.level = data.level;
+            updateUI();
+            loadQuests();
+            let msg = `🎉 +${formatNumber(data.rewardCoins)} монет`;
+            if (data.rewardTapPower > 0) msg += ` и +${data.rewardTapPower} к силе тапа!`;
+            showToast(msg);
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+          } else {
+            showToast(`❌ ${data.error || 'Ошибка'}`);
+          }
+        } catch (e) {
+          showToast("❌ Ошибка сети");
+        }
+      }
+
+      // ===== INIT =====
+      initTelegram();
+    </script>
+  </body>
+</html>

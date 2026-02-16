@@ -1,0 +1,15 @@
+{
+  "name": "tapcoin",
+  "version": "2.0.0",
+  "description": "Telegram Mini App - Tap to earn coin clicker game with SQLite",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0"
+  },
+  "keywords": ["telegram", "mini-app", "tap-to-earn"],
+  "license": "MIT"
+}
